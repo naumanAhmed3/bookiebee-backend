@@ -1,0 +1,41 @@
+# General Python libraries
+requests==2.32.0
+google-cloud-storage==2.8.0
+gunicorn==20.1.0
+google-auth==2.19.1  # For Google Cloud authentication
+python-dotenv==0.21.1  # Optional, if you're using .env files for configuration
+
+# LangChain and related packages
+langchain==0.3.7
+langchain_huggingface==0.1.2
+langchain_google_genai==2.0.1
+langchain-community==0.3.3
+langchain-core==0.3.19
+
+# HuggingFace and sentence-transformers
+huggingface-hub==0.26.1
+transformers==4.46.0
+sentence-transformers==3.2.1
+
+# CrossEncoder
+torch==2.1.0
+scikit-learn==1.5.2
+
+# Google Generative AI
+google-generativeai==0.8.3
+
+# Streamlit (UI Framework)
+streamlit==1.40.0
+
+# ChromaDB
+chromadb==0.3.6  # Or the latest stable version
+
+# Other utilities
+pydantic==2.9.2
+jsonschema==4.23.0
+
+# Flask and related extensions
+Flask==2.3.0
+Flask-SocketIO==5.3.2
+Flask-CORS==2.1.2
+eventlet==0.33.0  # Required for Flask-SocketIO and WebSockets
