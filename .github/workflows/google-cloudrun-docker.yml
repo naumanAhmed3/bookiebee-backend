@@ -30,7 +30,7 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
           project_id: '${{ env.PROJECT_ID }}'
-          audience: 'https://iam.googleapis.com/'  # Correct audience format
+          audience: 'https://run.googleapis.com/'  # Correct audience format
 
       # Docker authentication to push to Google Artifact Registry
       - name: 'Docker Auth'
