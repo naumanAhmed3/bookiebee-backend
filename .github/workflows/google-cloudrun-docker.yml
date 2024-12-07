@@ -6,7 +6,7 @@ on:
       - master
 
 env:
-  PROJECT_ID: 'my-project' 
+  PROJECT_ID: 'bookme-ai' 
   REGION: 'us-central1' 
   SERVICE: 'my-service' 
   WORKLOAD_IDENTITY_PROVIDER: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
