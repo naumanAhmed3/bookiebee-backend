@@ -6,7 +6,7 @@ on:
       - master
 
 env:
-  PROJECT_ID: 'bookme-ai' 
+  PROJECT_ID: 'bookme-ai'  # Your correct Google Cloud project ID
   REGION: 'us-central1' 
   SERVICE: 'my-service' 
   WORKLOAD_IDENTITY_PROVIDER: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
@@ -23,14 +23,16 @@ jobs:
       - name: 'Checkout'
         uses: 'actions/checkout@v4'
 
+      # Authenticate using Workload Identity Federation
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
         with:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
-          # Optionally, specify audience if necessary
-          audience: 'https://run.googleapis.com/' 
+          project_id: '${{ env.PROJECT_ID }}'
+          audience: 'https://run.googleapis.com/'  # Update if using Artifact Registry
 
+      # Docker authentication to push to Google Artifact Registry
       - name: 'Docker Auth'
         uses: 'docker/login-action@v3'
         with:
@@ -38,12 +40,14 @@ jobs:
           password: '${{ steps.auth.outputs.auth_token }}'
           registry: '${{ env.REGION }}-docker.pkg.dev'
 
+      # Build and push the container image
       - name: 'Build and Push Container'
         run: |-
           DOCKER_TAG="$${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}"
           docker build --tag "${DOCKER_TAG}" .
           docker push "${DOCKER_TAG}"
 
+      # Deploy the container to Cloud Run
       - name: 'Deploy to Cloud Run'
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
