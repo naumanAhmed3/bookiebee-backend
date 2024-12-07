@@ -9,7 +9,7 @@ env:
   PROJECT_ID: 'bookme-ai'
   REGION: 'us-central1'
   SERVICE: 'my-service'
-  WORKLOAD_IDENTITY_PROVIDER: 'projects/137177014687/locations/global/workloadIdentityPools/github-actions-cloud-run/attribute.repository/naumanAhmed3/bookiebee-backend'
+  WORKLOAD_IDENTITY_PROVIDER: 'projects/137177014687/locations/global/workloadIdentityPools/github-actions-cloud-run/providers/github'
 
 jobs:
   deploy:
