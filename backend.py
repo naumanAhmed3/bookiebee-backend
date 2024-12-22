@@ -1,52 +1,113 @@
-from flask import Flask, request
-from flask_socketio import SocketIO, emit, disconnect
-from flask_cors import CORS  # Import CORS to handle cross-origin requests
-from main import *  # Assuming 'executor' and 'load_vector_store' are already set up in your code
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
+from fastapi.middleware.cors import CORSMiddleware
+import json
+from main import *  # Import LangChain executor
+from typing import Dict
+import asyncio
 
-app = Flask(__name__)
-# Enable CORS if frontend is on a different origin
-CORS(app)
+# Allowed versions
+ALLOWED_VERSIONS = ['v1.1', 'v1.0']
 
-# Initialize SocketIO
-socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=30, ping_interval=20)
+app = FastAPI()
 
-# Allowed client versions
-ALLOWED_VERSIONS = ["v1.0", "v1.1"]
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Event handler when a client connects to the server
-@socketio.on('connect')
-def handle_connect():
-    # Get the version parameter from the connection request
-    version_from_request = request.args.get('version')
+# Session storage
+sessions: Dict[str, dict] = {}
 
-    print('VERSION IS ' , version_from_request)
-    
-    # Validate the version
-    if version_from_request not in ALLOWED_VERSIONS:
-        print(f"Invalid version: {version}. Disconnecting client.")
-        disconnect()  # Disconnect the client if the version is invalid
-    else:
-        set_version(version_from_request)
-        print(f"Client connected with valid version: {version}")
 
-# WebSocket event to handle incoming messages from the client
-@socketio.on('message')
-def handle_message(message):
+async def keep_alive(websocket):
+    """Keep connection alive with periodic pings."""
+    while True:
+        try:
+            await websocket.send_text(json.dumps({"ping": "keep-alive"}))
+            await asyncio.sleep(30)  # Ping every 30 seconds
+        except Exception as e:
+            print("Ping failed, connection lost:", e)
+            break
+
+
+@app.websocket("/ws/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, session_id: str, version: str = Query(...)):
+    if version not in ALLOWED_VERSIONS:
+        await websocket.close(code=1008)
+        return
+
+    # Session setup
+    if session_id not in sessions:
+        sessions[session_id] = {
+            "pending": [],
+            "memory": []
+        }
+
+    # Accept connection
+    await websocket.accept()
+    print(f"✅ Client connected: session_id={session_id}, version={version}")
+
+    # Start keep-alive task
+    asyncio.create_task(keep_alive(websocket))
+
     try:
-        # Call your agent's logic to process the received message
-        load_vector_store()
-        response = executor.invoke({'input': message})  
-        # Send the processed response back to the client
-        emit('response', response['output'])
+        # Handle pending responses
+        for response in sessions[session_id]["pending"]:
+            await websocket.send_text(json.dumps(response))
+        sessions[session_id]["pending"] = []
+
+        while True:
+            # Receive message
+            data = await websocket.receive_text()
+            data = json.loads(data)
+
+            if 'input' not in data:
+                await websocket.send_text(json.dumps({'output': 'Invalid input format.'}))
+                continue
+
+            user_input = data['input']
+
+            # Acknowledge
+            await websocket.send_text(json.dumps({
+                'message_id': data.get('message_id', 'unknown'),
+                'output': 'Processing...'
+            }))
+
+            try:
+                # Process input with a 300-second timeout
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(executor.invoke, {'input': user_input}), timeout=300
+                )
+                response = {
+                    'message_id': data.get('message_id', 'unknown'),
+                    'output': result.get('output', "Sorry, I couldn't process your query.")
+                }
+                await websocket.send_text(json.dumps(response))
+
+            except asyncio.TimeoutError:
+                await websocket.send_text(json.dumps({
+                    'message_id': data.get('message_id', 'unknown'),
+                    'output': "Server took too long to respond."
+                }))
+            except Exception as e:
+                await websocket.send_text(json.dumps({
+                    'message_id': data.get('message_id', 'unknown'),
+                    'output': f"Error: {str(e)}"
+                }))
+
+    except WebSocketDisconnect:
+        print(f"❌ Client disconnected: session_id={session_id}")
     except Exception as e:
-        # In case of error, send back a failure message
-        emit('response', f"Error processing the message: {str(e)}")
+        print(f"❌ Backend Error: {str(e)}")
+    finally:
+        # Cleanup session if required
+        pass
 
-def main():
-    """Main function to run the Flask-SocketIO server."""
-    # Run the app with the SocketIO server
-    socketio.run(app, host="0.0.0.0", port=5000)  # You can change the host/port as needed
 
-if __name__ == "__main__":
-    # Ensure the main function runs when the script is executed directly
-    main()
+@app.get("/")
+async def health_check():
+    return {"status": "OK"}

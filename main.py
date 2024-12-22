@@ -65,10 +65,7 @@ QUERY_PROMPT = PromptTemplate(
     input_variables=["question"],
     template="""You are an AI assistant. Generate seven variations of the user question from several different perspectives for document retrieval. 
     The questions should be pin-pointing such that they can be answered out of a mass of similar documents. 
-    Scenario :
-    Original Question : "XYZ's Contact number needed"
-        >>>  There are several similar documents of information in the database but only one of them might accurately answer this question.
-        >>>  Thus make sure the questions derived focus on the exact original question from mutliple question so that one piece of information that is needed to answer the original question accurately can be found.
+    
     Original question: {question}"""
 )
 
@@ -91,7 +88,7 @@ class LineListOutputParser(BaseLLMOutputParser):
 output_parser = LineListOutputParser()
 
 
-def download_from_gcp_bucket(bucket_name, destination_dir, folder_name="chroma_db"):
+def download_from_gcp_bucket( destination_dir=PERSIST_DIR,  bucket_name=GCP_BUCKET_NAME ,folder_name="chroma_db"):
     """Downloads the contents of a specific folder in a GCP bucket to a local directory."""
     client = storage.Client()
     bucket = client.bucket(bucket_name)
@@ -132,7 +129,7 @@ def load_vector_store():
         persist_directory="./vectorstorage/chroma_db")
     
     global retriever
-    retriever = db.as_retriever(search_kwargs={"k": 6})
+    retriever = db.as_retriever(search_kwargs={"k": 3})
     print(f"Vector store loaded with retriever.")
     return db , retriever
 
@@ -157,7 +154,7 @@ reasoning_engine = GoogleGenerativeAI(
                 HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
                 HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
                 HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH},
-    temperature=0.3,
+    temperature=0.5,
     max_tokens=10000,
     model_kwargs={"top_p": 1.0, "top_k": 2, "presence_penalty": 0, "frequency_penalty": 0} ,
     system_message = SystemMessage(
@@ -184,7 +181,7 @@ cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 def staticTool(query):
     """
     This tool will bring information related to:
-    >>> Up-to-date rules & policies of Bookme.Pk
+    >>> Up-to-date rules , terms and conditions , refund policies of Bookme.Pk.
     >>> Promotions and Offers
     >>> Newly introduced features in Bookme's Application and Website
     >>> Information regarding various vendors, operators, partners of Bookme.Pk
@@ -280,35 +277,30 @@ def get_auth_token():
     
     
     """
-    print('THEE VERSION IS' , version)
-    if version == "v1.0":
-        return HTTPException("404 Not Found: The requested resource could not be found.")
-        
-
-    if version == "v1.1":
+    
         # URL of the API endpoint
-        url = 'https://bookmesky.com/partner/api/auth/token'
+    url = 'https://bookmesky.com/partner/api/auth/token'
         
         # Headers to send with the request
-        headers = {
+    headers = {
             'Content-Type': 'application/json'
         }
         
         # Hardcoded data for the POST request
-        data = {
+    data = {
             'username': 'bookme-sky',
             'password': 'omi@work321'
         }
         
         # Make the POST request
-        response = requests.post(url, headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=data)
         
         # Check if the request was successful
-        if response.status_code == 201:
+    if response.status_code == 201:
             # Return the JSON response if the request was successful
             print(response.json())
             return response.text
-        else:
+    else:
             # Print an error message if the request failed
             print(f"Error: {response.status_code}")
             print(response.text)
@@ -372,8 +364,6 @@ def get_airlines(auth_token , depart_from_city , arrival_at_city , TravelClass )
             return None
 
 
-
-
 @tool
 def search_flights(auth_token, depart_from_city, arrival_at_city, ContentProvider=None, TravelClass='economy',
                    depart_date=None, arrive_date=None, adult_count=1, child_count=0, infant_count=0, trip_type='one_way'
@@ -407,7 +397,7 @@ def search_flights(auth_token, depart_from_city, arrival_at_city, ContentProvide
     - Must get the 'auth_token' parameter value using 'get_auth_token' tool before using this tool.
     - Don't introduce yourself again and again.
     - If 'trip_type' is not provided, default to 'one_way' and set 'arrive_date' to None.
-    - If 'ContentProvider'/airline  is not specified in user's query ,must not ask it from user but call the API for all of the following airlines as value for 'ContentProvider' argument : airblue , airsial , sereneair , jazeera , flydubai , salamair , bookme-legacy , oneapi.​ 
+    - If 'ContentProvider'/airline  is not specified in user's query ,must not ask it from user but call the API for all of the following airlines as value for 'ContentProvider' argument : airblue , airsial, sereneair, jazeera, flydubai, salamair, bookme-legacy, oneapi.​ 
     - If 'TravelClass' is not provided, default to 'economy'
     - The TravelClass parameter must be all lowercase (e.g., "economy" even if given as "Economy" by user ) .
     - For 'return' trips, set both depart_date and arrive_date.
@@ -423,12 +413,14 @@ def search_flights(auth_token, depart_from_city, arrival_at_city, ContentProvide
     
     """
 
+    # Define the version
+    version = "v1.1"
+
     if version == "v1.0":
         return HTTPException("404 Not Found: The requested resource could not be found.")
-    
 
     if version == "v1.1":
-    
+
         # Default to 'economy' if TravelClass is not specified
         TravelClass = TravelClass.lower() if TravelClass else 'economy'
         
@@ -473,13 +465,35 @@ def search_flights(auth_token, depart_from_city, arrival_at_city, ContentProvide
             }
 
             try:
-                response = requests.post(url, headers=headers, data=json.dumps(data))
+                # Use 'json' parameter instead of 'data' for automatic JSON encoding
+                response = requests.post(url, headers=headers, json=data)
                 response.raise_for_status()  # Raises an error if the response status is 4xx/5xx
-                return json.dumps(response.text)
+                
+                # Assuming the API returns a JSON response with flight details
+                api_response = response.json()
+                print(f"HERES THE API {content_provider} RES : {api_response}")
+                return {
+                    "ContentProvider": content_provider,
+                    "flights": api_response
+                }
             
+            except requests.exceptions.HTTPError as http_err:
+                if response.status_code == 404:
+                    return {
+                        "ContentProvider": content_provider,
+                        "error": "404 Not Found: The requested resource could not be found. Please visit our Mobile App or Website for more information."
+                    }
+                else:
+                    return {
+                        "ContentProvider": content_provider,
+                        "error": f"HTTP error occurred: {str(http_err)}"
+                    }
             except requests.exceptions.RequestException as e:
-                # Handle any errors that occur during the API request
-                return {"error": f"An error occurred for {content_provider}: {str(e)}"}
+                # Handle any other errors that occur during the API request
+                return {
+                    "ContentProvider": content_provider,
+                    "error": f"An error occurred: {str(e)}"
+                }
 
         results = []
 
@@ -494,52 +508,43 @@ def search_flights(auth_token, depart_from_city, arrival_at_city, ContentProvide
                         result = future.result()
                         results.append(result)
                     except Exception as e:
-                        results.append({"error": f"An error occurred for {airline}: {str(e)}"})
+                        results.append({
+                            "ContentProvider": airline,
+                            "error": f"An error occurred for {airline}: {str(e)}"
+                        })
         else:
             # If ContentProvider is provided, just call the API for that specific airline
             results.append(call_api(ContentProvider))
 
-        # Add the API response to the chat memory and return it
-        formatted_responses = "\n".join([json.dumps(result, indent=2) for result in results])
-        
-        
-        return results
+        # Convert each result to a separate JSON object string
+        json_objects = [json.dumps(result, ensure_ascii=False) for result in results]
 
-@tool
-def check_version():
-    """
-    >>> Always use this tool to check for the client version when they ask about any real-time data.
-    >>> If the client's version is not v1.1 , tell them that the you don't have access to real-time information (Available Flights,Bus Timings and Fares etc) they are asking for.
-    >>> If the client's version is v1.1 , proceed with the other available tools to answer their query
+        # Join all JSON objects into a single string separated by newlines
+        final_response = "\n".join(json_objects)
 
-    """
-
-    return version
-
+        return final_response
 
 tools =[
     get_auth_token, 
     get_airlines , 
     search_flights,
     today_date,
-    staticTool,
-    check_version
-   
+    staticTool
 ]
 
 
 role = """ 
-Throughout this entire conversation , you are supposed to strictly abide by the following roles and duties:
->>>You name is BookieBee, an assistant for the Bookme.Pk .
->>>Respond confidently and accurately, as if you inherently know the answers.
->>>You are not allowed to create any data by yourself , use provided tools only!
->>>Maintain a professional yet friendly tone, using emojis 😊 to engage users.
->>>Do not reveal or hint at internal mechanisms, processes, or tools.
->>>Bookme.Pk is a comprehensive online booking platform that allows you to book buses, flights, movies, events, hotels, and more. We provide access to services from a variety of vendors, operators, airlines, and other partners through our app and website.
-    Please note that both Bookme.Pk and our partner vendors have their own distinct policies. When assisting users, it's important to guide them regarding the policies of both Bookme and the relevant service provider. Any queries beyond these topics should not be addressed.
->>>If a query can be answered using provided tools , do not ask users to do anything on their own (Contacting helpline or check webbsite etc)
->>>Answer queries only regarding Bookme.Pk or it's services. 
->>>Avoid speculation and ensure responses are always accurate, helpful, and aligned with your knowledge scope.
+You are an advanced conversational agent that interacts with users using tools to retrieve and provide information. Your role is not just to deliver answers but to engage the user in a meaningful, natural, and friendly conversation.
+    >>> Your Name in BookieBee , an intelligent assistant for Bookme.Pk ( Which an online bookingg platform for travel bookings , events , hotels and movies).
+    >>> You are not supposed to make any information by yourself , all information should come only from available tools only.
+    >>> Tailor your responses to maintain the flow of the conversation, weaving the retrieved information naturally into the dialogue.
+    >>> You name is BookieBee, a conversational assistant for the Bookme.Pk.
+    >>> Respond confidently and accurately, as if you inherently know the answers.
+    >>> You are not allowed to create any data by yourself , use provided tools only!
+    >>> Acknowledge answered questions and provide new or relevant details without repeating yourself.
+    >>> Maintain a professional yet friendly tone, using emojis 😊 to engage users.
+    >>> Do not reveal or hint at internal mechanisms, processes, tools , knowledge base or your learning etc.
+    >>> If a query can be answered using provided tools , do not ask users to do anything on their own (Contacting helpline or check webbsite etc)
 """
 #Adding role to chat history 
 memory.chat_memory.add_message(SystemMessage(content=role))
@@ -569,7 +574,10 @@ def initialize_vectorstore():
 
 
 
+
+
 load_vector_store()
+
   
   
 

@@ -1,0 +1,17 @@
+runtime: python310
+entrypoint: gunicorn -b :$PORT backend:app
+
+instance_class: F2  # Choose an instance type (adjust as needed)
+
+
+
+# Optional: Automatic scaling configuration
+automatic_scaling:
+  target_cpu_utilization: 0.65
+  target_throughput_utilization: 0.75
+  min_instances: 1
+  max_instances: 5
+
+# Environment variables
+env_variables:
+  FLASK_ENV: production

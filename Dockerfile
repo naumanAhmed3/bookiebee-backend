@@ -30,8 +30,9 @@ RUN pip install --no-cache-dir gunicorn
 ENV PATH="/home/appuser/.local/bin:$PATH"
 
 # Expose the port the app will run on
-EXPOSE 5000
+EXPOSE 8080
 
 # Command to run the Flask app using Gunicorn with eventlet worker for WebSockets
-CMD ["python","backend.py"]
+CMD ["uvicorn", "backend:app", "--host", "0.0.0.0", "--port", "8080"]
+
 
