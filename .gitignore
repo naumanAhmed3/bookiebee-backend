@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+*.pem
+*service-account*.json
+__pycache__/
+*.pyc
+*.log
