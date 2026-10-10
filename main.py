@@ -40,7 +40,7 @@ retriever = None
 #This model will be used for query expannsion and summarizing chat history in memory buffer
 questions_generator = GoogleGenerativeAI(
     model="gemini-1.5-pro",
-    google_api_key="AIzaSyDvbke4TODM1nOMbkZAXXhOVGQeECSsATU",
+    google_api_key=os.environ["GOOGLE_API_KEY"],
     safety_settings={
                 HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
                 HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
@@ -143,7 +143,7 @@ embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-
 # This is for the Agent's Decision making 
 reasoning_engine = GoogleGenerativeAI(
     model="gemini-1.5-pro",
-    google_api_key="AIzaSyDvbke4TODM1nOMbkZAXXhOVGQeECSsATU",
+    google_api_key=os.environ["GOOGLE_API_KEY"],
     safety_settings={
                 HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
                 HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
